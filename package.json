@@ -1,17 +1,40 @@
 {
   "name": "kaplay-game",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Kaplay Engine Editor (Electron + TypeScript) y server de ejemplo",
+  "main": "dist/electron/main.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "editor:start": "electron .",
+    "editor:build": "tsc -p tsconfig.json",
+    "renderer:build": "tsc -p renderer/tsconfig.json",
+    "renderer:dev": "tsc -w -p renderer/tsconfig.json",
+    "renderer:vite": "cd renderer && vite",
+    "renderer:vite:build": "cd renderer && vite build",
+    "build:all": "npm run editor:build && npm run renderer:build",
+    "editor:watch": "concurrently \"tsc -w -p tsconfig.json\" \"npm:renderer:dev\" \"cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "editor:dev": "concurrently -k \"npm:renderer:vite\" \"npm:editor:watch\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^5.1.0",
+    "kaplay": "^3001.0.19",
     "nodemon": "^3.1.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^7.0.3",
+    "electron": "^31.7.7",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.9"
   }
 }
