@@ -1,205 +1,101 @@
 import React, { useEffect, useRef, useState } from 'react';
 import kaplay from 'kaplay';
+import type { CellType } from '../map/generate';
+
+const COLORS: Record<CellType, string> = {
+  ground: '#9be7a5',
+  tree: '#2e7d32',
+  stone: '#7f8c8d',
+  coal: '#3b3b3b',
+  iron: '#b0b0b0',
+  water: '#3498db',
+};
+
+type LogLevel = 'info' | 'warn' | 'error';
 
 interface KaplayViewportProps {
-  width?: number;
-  height?: number;
-  onGameReady?: (game: any) => void;
-  className?: string;
+  map: CellType[][];
+  tileSize?: number;
+  onLog?: (level: LogLevel, msg: string) => void;
 }
 
-const KaplayViewport: React.FC<KaplayViewportProps> = ({
-  width = 800,
-  height = 600,
-  onGameReady,
-  className = ''
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const gameRef = useRef<any>(null);
-  const [isGameReady, setIsGameReady] = useState(false);
+const KaplayViewport: React.FC<KaplayViewportProps> = ({ map, tileSize = 12, onLog }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef(map);
+  const onLogRef = useRef(onLog);
   const [error, setError] = useState<string | null>(null);
 
+  mapRef.current = map;
+  onLogRef.current = onLog;
+
   useEffect(() => {
-    if (!canvasRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    // Verificar soporte de WebGL antes de inicializar
-     const canvas = canvasRef.current;
-     
-     // Verificación básica del canvas
-      if (!canvas) {
-        const errorMsg = 'Canvas no disponible';
-        console.error(errorMsg);
-        setError(errorMsg);
-        return;
-      }
- 
-     // Esperar un frame para asegurar que el canvas esté completamente montado
-    const initializeKaplay = () => {
-      try {
-          // Configuración mínima para evitar errores de shader
-          const game = kaplay({
-            canvas: canvas,
-            width: canvas.clientWidth || 800,
-            height: canvas.clientHeight || 600,
-            background: [20, 20, 40],
-            global: false,
-            logMax: 1
-          });
-
-        gameRef.current = game;
-        setIsGameReady(true);
-
-        // Notificar que el juego está listo
-        if (onGameReady) {
-          onGameReady(game);
-        }
-
-        // Ejemplo básico: agregar un rectángulo
-        game.add([
-          game.rect(100, 100),
-          game.color(100, 255, 100),
-          game.pos(width / 2 - 50, height / 2 - 50),
-          game.area(),
-          "test-rect"
-        ]);
-
-        // Texto de bienvenida
-        game.add([
-          game.text("Kaplay Viewport Ready!", { size: 24 }),
-          game.color(255, 255, 255),
-          game.pos(width / 2, 50),
-          game.anchor("center")
-        ]);
-
-      } catch (err) {
-         const errorMsg = `Error al inicializar Kaplay: ${err instanceof Error ? err.message : 'Error desconocido'}`;
-         console.error(errorMsg, err);
-         setError(errorMsg);
-         setIsGameReady(false);
-       }
-    };
-
-    // Usar requestAnimationFrame para asegurar que el DOM esté listo
-    const timeoutId = setTimeout(() => {
-      requestAnimationFrame(initializeKaplay);
-    }, 100);
-
-    // Cleanup function
-    return () => {
-      clearTimeout(timeoutId);
-      if (gameRef.current) {
-        try {
-          // Limpiar el contexto de Kaplay
-          gameRef.current.quit?.();
-        } catch (error) {
-          console.warn('Error al limpiar Kaplay:', error);
-        }
-        gameRef.current = null;
-      }
-      // Cleanup básico del canvas
-        if (canvas) {
-          // Canvas cleanup si es necesario
-        }
-      setIsGameReady(false);
-      setError(null);
-    };
-  }, [width, height, onGameReady]);
-
-  // Función para obtener la instancia del juego
-  const getGame = () => gameRef.current;
-
-  // Función para limpiar la escena
-  const clearScene = () => {
-    if (gameRef.current) {
-      gameRef.current.destroyAll();
-    }
-  };
-
-  // Función para pausar/reanudar
-  const togglePause = () => {
-    if (gameRef.current) {
-      // Kaplay no tiene pause built-in, pero podemos implementarlo
-      // Por ahora, simplemente loggeamos
-      console.log('Toggle pause - implementar lógica de pausa');
-    }
-  };
-
-  // Función para reintentar la inicialización
-  const retryInitialization = () => {
+    // El canvas es nuevo en cada montaje: así StrictMode (monta/desmonta/monta) no reutiliza un canvas ya usado por Kaplay.
+    // shortcut: tamaño y tileSize se leen solo al montar; cambiarlos exige remontar, upgrade si hace falta redimensionar en caliente.
+    const canvas = document.createElement('canvas');
+    canvas.style.display = 'block';
+    container.appendChild(canvas);
     setError(null);
-    setIsGameReady(false);
-    // Forzar re-render del useEffect
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      // Trigger useEffect by changing a dependency
-      canvas.style.display = 'none';
-      setTimeout(() => {
-        canvas.style.display = 'block';
-      }, 10);
-    }
-  };
 
+    const m = mapRef.current;
+    let game: ReturnType<typeof kaplay> | null = null;
+
+    try {
+      game = kaplay({
+        canvas,
+        width: m[0].length * tileSize,
+        height: m.length * tileSize,
+        background: [20, 20, 40],
+        global: false,
+        logMax: 1,
+      });
+
+      const k = game;
+      const colors = new Map(
+        (Object.keys(COLORS) as CellType[]).map((t) => [t, k.Color.fromHex(COLORS[t])] as const)
+      );
+
+      k.onDraw(() => {
+        const grid = mapRef.current;
+        for (let y = 0; y < grid.length; y++) {
+          for (let x = 0; x < grid[y].length; x++) {
+            k.drawRect({
+              pos: k.vec2(x * tileSize, y * tileSize),
+              width: tileSize,
+              height: tileSize,
+              color: colors.get(grid[y][x]),
+            });
+          }
+        }
+      });
+
+      onLogRef.current?.('info', 'Kaplay inicializado');
+    } catch (err) {
+      const msg = `Error al inicializar Kaplay: ${err instanceof Error ? err.message : 'Error desconocido'}`;
+      setError(msg);
+      onLogRef.current?.('error', msg);
+    }
+
+    return () => {
+      try {
+        game?.quit();
+      } catch (err) {
+        onLogRef.current?.('warn', `Error al cerrar Kaplay: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      canvas.remove();
+    };
+  }, []);
+
+  // El div del efecto no tiene hijos de React, así el canvas añadido a mano no choca con el reconciliador.
   return (
-    <div className={`kaplay-viewport ${className}`} style={{ position: 'relative' }}>
-      <canvas
-        ref={canvasRef}
-        width={width}
-        height={height}
-        style={{
-          border: '1px solid #333',
-          display: 'block',
-          backgroundColor: '#141428'
-        }}
-      />
-      {!isGameReady && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            color: error ? '#ff6b6b' : 'white',
-            fontSize: '16px',
-            textAlign: 'center',
-            padding: '20px'
-          }}
-        >
-          {error ? (
-             <div>
-               <div style={{ marginBottom: '10px', fontSize: '18px', fontWeight: 'bold' }}>❌ Error</div>
-               <div style={{ marginBottom: '15px' }}>{error}</div>
-               <button
-                 onClick={retryInitialization}
-                 style={{
-                   padding: '8px 16px',
-                   backgroundColor: '#4CAF50',
-                   color: 'white',
-                   border: 'none',
-                   borderRadius: '4px',
-                   cursor: 'pointer',
-                   fontSize: '14px',
-                   marginBottom: '10px'
-                 }}
-               >
-                 🔄 Reintentar
-               </button>
-               <div style={{ fontSize: '14px', opacity: 0.8 }}>
-                 Revisa la consola para más detalles
-               </div>
-             </div>
-           ) : (
-             'Cargando Kaplay...'
-           )}
-        </div>
-      )}
+    <div>
+      <div ref={containerRef} />
+      {error && <div style={{ color: '#ff6b6b', padding: '12px' }}>{error}</div>}
     </div>
   );
 };
 
 export default KaplayViewport;
-export type { KaplayViewportProps };
+export type { KaplayViewportProps, LogLevel };

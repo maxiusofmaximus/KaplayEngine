@@ -14,7 +14,8 @@
     "renderer:vite:build": "cd renderer && vite build",
     "build:all": "npm run editor:build && npm run renderer:build",
     "editor:watch": "concurrently \"tsc -w -p tsconfig.json\" \"npm:renderer:dev\" \"cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
-    "editor:dev": "concurrently -k \"npm:renderer:vite\" \"npm:editor:watch\""
+    "editor:dev": "concurrently -k \"npm:renderer:vite\" \"npm:editor:watch\"",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +36,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "typescript": "^5.9.2",
-    "vite": "^5.4.9"
+    "vite": "^5.4.9",
+    "vitest": "^2.1.9"
   }
 }
