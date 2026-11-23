@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
+import * as fs from 'fs';
 import * as path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
@@ -63,6 +64,41 @@ function createWindow() {
 
 // IPC mínimo de prueba
 ipcMain.handle('ping', () => 'pong');
+
+const DENSITY_KEYS = ['tree', 'stone', 'coal', 'iron', 'water'];
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+
+function isValidParams(p: unknown): boolean {
+  if (typeof p !== 'object' || p === null) return false;
+  const { width, height, seed, density } = p as Record<string, unknown>;
+  if (!isNum(width) || !isNum(height) || !isNum(seed)) return false;
+  if (typeof density !== 'object' || density === null) return false;
+  return DENSITY_KEYS.every((k) => isNum((density as Record<string, unknown>)[k]));
+}
+
+function configPath(): string {
+  return path.join(app.getPath('userData'), 'config.json');
+}
+
+// Nunca lanza: si no hay config o está corrupta, devuelve null.
+ipcMain.handle('config:load', () => {
+  try {
+    return JSON.parse(fs.readFileSync(configPath(), 'utf8'));
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('config:save', (_e, params: unknown) => {
+  if (!isValidParams(params)) return false;
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(configPath(), JSON.stringify(params, null, 2), 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
+});
 
 app.whenReady().then(() => {
   createWindow();
