@@ -18,6 +18,9 @@ build/
 .env.*
 !.env.example
 
+# JS compilado en renderer/src (la fuente es .tsx)
+renderer/src/**/*.js
+
 # sistema/editores
 .DS_Store
 Thumbs.db

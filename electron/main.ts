@@ -50,7 +50,7 @@ function createWindow() {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     // Producción: cargar el build de Vite
-    const indexPath = path.join(process.cwd(), 'renderer', 'dist', 'index.html');
+    const indexPath = path.join(app.getAppPath(), 'renderer', 'dist', 'index.html');
     mainWindow.loadFile(indexPath);
   }
 
