@@ -25,3 +25,6 @@ renderer/src/**/*.js
 .DS_Store
 Thumbs.db
 .vscode/
+
+# instaladores (electron-builder)
+release/

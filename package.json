@@ -1,7 +1,7 @@
 {
   "name": "kaplay-game",
-  "version": "1.0.0",
-  "description": "Kaplay Engine Editor (Electron + TypeScript) y server de ejemplo",
+  "version": "0.1.0",
+  "description": "Kaplay Engine Editor",
   "main": "dist/electron/main.js",
   "scripts": {
     "start": "node server.js",
@@ -15,10 +15,14 @@
     "build:all": "npm run editor:build && npm run renderer:build",
     "editor:watch": "concurrently \"tsc -w -p tsconfig.json\" \"npm:renderer:dev\" \"cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
     "editor:dev": "concurrently -k \"npm:renderer:vite\" \"npm:editor:watch\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dist:win": "npm run editor:build && npm run renderer:vite:build && electron-builder --win nsis --x64 --publish never"
   },
   "keywords": [],
-  "author": "",
+  "author": {
+    "name": "maxiusofmaximus",
+    "email": "maxiusofmaximus@users.noreply.github.com"
+  },
   "license": "ISC",
   "dependencies": {
     "express": "^5.1.0",
@@ -33,10 +37,41 @@
     "concurrently": "^9.2.1",
     "cross-env": "^7.0.3",
     "electron": "^31.7.7",
+    "electron-builder": "^26.18.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "typescript": "^5.9.2",
     "vite": "^5.4.9",
     "vitest": "^2.1.9"
+  },
+  "build": {
+    "appId": "com.maxiusofmaximus.kaplayengine",
+    "productName": "Kaplay Engine Editor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/electron/**",
+      "renderer/dist/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/game.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "KaplayEngine-Editor-${version}-x64-setup.${ext}",
+      "uninstallDisplayName": "Kaplay Engine Editor",
+      "deleteAppDataOnUninstall": false
+    }
   }
 }
